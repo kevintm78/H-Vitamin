@@ -1068,6 +1068,7 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg,
 			* For sane do_mmap_pgoff() parameters, avoid
 			* round downs that trigger nil-page and MAP_FIXED.
 			*/
+
 			if ((shmflg & SHM_RND) && addr >= shmlba)
 				addr &= ~(shmlba - 1);
 			else
