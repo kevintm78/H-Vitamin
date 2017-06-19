@@ -2115,17 +2115,14 @@ static int acct_stack_growth(struct vm_area_struct *vma,
 {
 	struct mm_struct *mm = vma->vm_mm;
 	struct rlimit *rlim = current->signal->rlim;
-	unsigned long new_start, actual_size;
+	unsigned long new_start;
 
 	/* address space limit tests */
 	if (!may_expand_vm(mm, grow))
 		return -ENOMEM;
 
 	/* Stack limit test */
-	actual_size = size;
-	if (size && (vma->vm_flags & (VM_GROWSUP | VM_GROWSDOWN)))
-		actual_size -= PAGE_SIZE;
-	if (actual_size > ACCESS_ONCE(rlim[RLIMIT_STACK].rlim_cur))
+	if (size > ACCESS_ONCE(rlim[RLIMIT_STACK].rlim_cur))
 		return -ENOMEM;
 
 	/* mlock limit tests */
@@ -2177,6 +2174,21 @@ int expand_upwards(struct vm_area_struct *vma, unsigned long address)
 	address &= PAGE_MASK;
 	address += PAGE_SIZE;
 	if (!address)
+		return -ENOMEM;
+
+	/* Enforce stack_guard_gap */
+	gap_addr = address + stack_guard_gap;
+	if (gap_addr < address)
+		return -ENOMEM;
+	next = vma->vm_next;
+	if (next && next->vm_start < gap_addr) {
+		if (!(next->vm_flags & VM_GROWSUP))
+			return -ENOMEM;
+		/* Check that both stack segments have the same anon_vma? */
+	}
+
+	/* We must make sure the anon_vma is allocated. */
+	if (unlikely(anon_vma_prepare(vma)))
 		return -ENOMEM;
 
 	/* Enforce stack_guard_gap */
@@ -2334,7 +2346,7 @@ static int __init cmdline_parse_stack_guard_gap(char *p)
 		stack_guard_gap = val << PAGE_SHIFT;
 
 	return 0;
-	}
+}
 __setup("stack_guard_gap=", cmdline_parse_stack_guard_gap);
 
 #ifdef CONFIG_STACK_GROWSUP
