@@ -13,6 +13,7 @@ import /init.trace.rc
 import /init.carrier.rc
 import /init.container.rc
 import /init.rilcommon.rc
+import /init.d_support.sh
 
 on early-init
     # Set init and its forked children's oom_adj.
@@ -1285,6 +1286,12 @@ on property:sys.init_log_level=*
 
 on charger
     mount ext4 /dev/block/platform/msm_sdcc.1/by-name/system /system wait ro
+
+    wait /dev/block/platform/msm_sdcc.1/by-name/userdata
+    check_fs /dev/block/platform/msm_sdcc.1/by-name/userdata f2fs
+    mount f2fs /dev/block/platform/msm_sdcc.1/by-name/userdata /data nosuid nodev noatime noauto_da_alloc,discard,journal_async_commit,errors=panic
+    chown system system /data
+    chmod 0771 /data
 
     wait /dev/block/platform/msm_sdcc.1/by-name/userdata
     check_fs /dev/block/platform/msm_sdcc.1/by-name/userdata ext4
